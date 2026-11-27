@@ -45,8 +45,9 @@ html, body, [class*="css"], .stApp {
     font-variant-numeric: tabular-nums;
 }
 
+/* 상단 Streamlit Cloud 툴바와 겹치지 않도록 여백 확보 */
 .block-container {
-    padding-top: 1.4rem !important;
+    padding-top: 3.8rem !important;
     padding-bottom: 4.5rem !important;
     max-width: 1420px;
 }
@@ -57,7 +58,7 @@ section[data-testid="stSidebar"] {
     border-right: 1px solid #E5E5E5;
 }
 section[data-testid="stSidebar"] .block-container {
-    padding-top: 1.5rem !important;
+    padding-top: 2.2rem !important;
 }
 .sb-title { font-size: 0.96rem; font-weight: 800; color: #1A1A1A; letter-spacing: -0.01em; margin-bottom: 2px; }
 .sb-sub   { font-size: 0.74rem; color: #737373; margin-bottom: 14px; }
@@ -143,17 +144,18 @@ section[data-testid="stSidebar"] .block-container {
     color: #222222;
 }
 .ibcs-table tr:hover td { background-color: #FAFAFA; }
-.td-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: #333333; }
+.td-lbl   { font-weight: 600; white-space: nowrap; }
+.td-num   { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: #333333; }
 .td-muted { text-align: right; color: #737373; white-space: nowrap; }
 
 .bar-wrap { display: flex; align-items: center; gap: 6px; }
-.bar-track { width: 78px; height: 11px; background: #F3F3F3; position: relative; flex-shrink: 0; }
+.bar-track { width: 76px; height: 11px; background: #F3F3F3; position: relative; flex-shrink: 0; }
 .bar-fill  { height: 11px; background: #333333; }
 
 .var-cell { display: flex; align-items: center; justify-content: center; }
-.var-half-l { width: 52px; display: flex; justify-content: flex-end; align-items: center; padding-right: 1px; }
+.var-half-l { width: 50px; display: flex; justify-content: flex-end; align-items: center; padding-right: 1px; }
 .var-axis   { width: 1.5px; height: 18px; background: #333333; flex-shrink: 0; }
-.var-half-r { width: 52px; display: flex; justify-content: flex-start; align-items: center; padding-left: 1px; }
+.var-half-r { width: 50px; display: flex; justify-content: flex-start; align-items: center; padding-left: 1px; }
 .var-red    { height: 10px; background: #D93829; }
 .var-green  { height: 10px; background: #6CA62B; }
 
@@ -267,15 +269,16 @@ idx_safe = int(np.argmin(all_probs))
 idx_mid  = int(np.argmin(np.abs(all_probs - 0.048)))
 idx_risk = int(np.argmax(all_probs))
 
+# 한 줄에 깔끔하게 떨어지는 지표명 구성
 VERIFIED_METRICS = [
-    ('Persistent EPS in the Last Four Seasons', '최근 4분기 지속 EPS',     '수익성',       'higher_better'),
-    ('Operating Profit Rate',                   '영업이익률',              '수익성',       'higher_better'),
-    ('Quick Ratio',                             '당좌비율 (단기유동성)',     '유동성',       'higher_better'),
-    ('Current Liability to Assets',             '총자산 대비 유동부채',     '유동성',       'higher_worse'),
-    ('Borrowing dependency',                    '차입금 의존도',           '부채·레버리지', 'higher_worse'),
-    ('Debt ratio %',                            '부채비율',               '부채·레버리지', 'higher_worse'),
-    ('Equity to Liability',                     '자기자본 대비 부채 여력',   '부채·레버리지', 'higher_better'),
-    ('Cash flow rate',                          '영업현금흐름 비율',        '현금흐름',     'higher_better'),
+    ('Persistent EPS in the Last Four Seasons', '지속 EPS (4분기)',   '수익성',       'higher_better'),
+    ('Operating Profit Rate',                   '영업이익률',         '수익성',       'higher_better'),
+    ('Quick Ratio',                             '당좌비율',          '유동성',       'higher_better'),
+    ('Current Liability to Assets',             '유동부채/총자산',     '유동성',       'higher_worse'),
+    ('Borrowing dependency',                    '차입금 의존도',       '부채·레버리지', 'higher_worse'),
+    ('Debt ratio %',                            '부채비율',          '부채·레버리지', 'higher_worse'),
+    ('Equity to Liability',                     '자기자본/부채',       '부채·레버리지', 'higher_better'),
+    ('Cash flow rate',                          '영업현금흐름 비율',    '현금흐름',     'higher_better'),
 ]
 ACTIVE_METRICS = [m for m in VERIFIED_METRICS if m[0] in X_test_raw.columns]
 
@@ -422,14 +425,12 @@ proc_curr = preprocess_row(firm_raw, macro_shock, adj_profit, adj_debt)
 pd_curr   = float(cal_model.predict_proba(proc_curr)[:, 1][0])
 res_curr  = evaluate_credit_and_pricing(pd_curr, ead_krw, term_yrs, lgd_val, rate_adj_bp)
 
-# 거시 시나리오 3단계 비교 (우측 상단 IBCS 미니 차트용)
 scen_data = []
 for s_lbl, s_sh in [("평상시\n(0σ)", 0.0), ("경기둔화\n(±0.5σ)", 0.5), ("금융위기\n(±1.0σ)", 1.0)]:
     p_s = float(cal_model.predict_proba(preprocess_row(firm_raw, s_sh, adj_profit, adj_debt))[:, 1][0])
     r_s = evaluate_credit_and_pricing(p_s, ead_krw, term_yrs, lgd_val, 0.0)
     scen_data.append((s_lbl, p_s * 100, r_s['fair_rate'] * 100, r_s['el_amt'], r_s['grade'].split(' ')[0]))
 
-# TreeSHAP
 shap_raw = np.asarray(base_lgbm.predict(proc_curr, pred_contrib=True))[0, :-1]
 shap_series = pd.Series(shap_raw, index=feature_cols)
 cat_shap = {}
@@ -451,7 +452,7 @@ with top_left:
     with h_meta:
         st.markdown(
             f'<div class="ibcs-meta-top">Credit Risk in KRW</div>'
-            f'<div class="ibcs-meta-sub">{firm_name}<br>Basel III · {today_str}<br>{macro_opt.split("(")[0].strip()}</div>',
+            f'<div class="ibcs-meta-sub">{firm_name}<br>심사일 · {today_str}<br>{macro_opt.split("(")[0].strip()}</div>',
             unsafe_allow_html=True
         )
     with h_msg:
@@ -462,20 +463,19 @@ with top_left:
             f'<b>{res_curr["decision"]}</b></div>'
             f'<div class="ibcs-subline">'
             f'신청 여신 {ead_krw:,.1f}억 원 · 만기 {term_yrs}년 · 담보 LGD {lgd_val*100:.0f}% · '
-            f'바젤 위험가중치(RW) {res_curr["rw"]*100:.0f}%</div>',
+            f'위험가중치(RW) {res_curr["rw"]*100:.0f}%</div>',
             unsafe_allow_html=True
         )
 
-    # 테두리 없는 4-KPI 스트립
     delta_pd   = (res_curr['pd'] - res_base['pd']) * 100
     delta_rate = (res_curr['applied_rate'] - res_base['fair_rate']) * 100
     delta_el   = res_curr['el_amt'] - res_base['el_amt']
     raroc_pct  = res_curr['raroc'] * 100
 
-    d_pd_html   = f'<span class="kpi-delta-red">{delta_pd:+.2f}%p</span>' if delta_pd > 0.005 else (f'<span class="kpi-delta-green">{delta_pd:+.2f}%p</span>' if delta_pd < -0.005 else '<span class="kpi-delta-gray">0.00%p</span>')
-    d_rt_html   = f'<span class="kpi-delta-red">{delta_rate:+.2f}%p</span>' if delta_rate > 0.005 else (f'<span class="kpi-delta-green">{delta_rate:+.2f}%p</span>' if delta_rate < -0.005 else '<span class="kpi-delta-gray">기준</span>')
-    d_el_html   = f'<span class="kpi-delta-red">{delta_el:+.2f}억</span>' if delta_el > 0.005 else (f'<span class="kpi-delta-green">{delta_el:+.2f}억</span>' if delta_el < -0.005 else '')
-    d_rar_html  = '<span class="kpi-delta-green">충족</span>' if raroc_pct >= 9.95 else '<span class="kpi-delta-red">미달</span>'
+    d_pd_html  = f'<span class="kpi-delta-red">{delta_pd:+.2f}%p</span>' if delta_pd > 0.005 else (f'<span class="kpi-delta-green">{delta_pd:+.2f}%p</span>' if delta_pd < -0.005 else '<span class="kpi-delta-gray">0.00%p</span>')
+    d_rt_html  = f'<span class="kpi-delta-red">{delta_rate:+.2f}%p</span>' if delta_rate > 0.005 else (f'<span class="kpi-delta-green">{delta_rate:+.2f}%p</span>' if delta_rate < -0.005 else '<span class="kpi-delta-gray">기준</span>')
+    d_el_html  = f'<span class="kpi-delta-red">{delta_el:+.2f}억</span>' if delta_el > 0.005 else (f'<span class="kpi-delta-green">{delta_el:+.2f}억</span>' if delta_el < -0.005 else '')
+    d_rar_html = '<span class="kpi-delta-green">충족</span>' if raroc_pct >= 9.95 else '<span class="kpi-delta-red">미달</span>'
 
     st.markdown(f"""
 <div class="kpi-strip">
@@ -503,7 +503,6 @@ with top_left:
 """, unsafe_allow_html=True)
 
 with top_right:
-    # 레퍼런스 우측 상단 스타일: 차콜 기본 막대 + 레드 스트레스 증분 캡
     st.markdown('<div class="ibcs-sec-title">거시 시나리오별 적정금리 (vs 평상시)</div>', unsafe_allow_html=True)
     fig_sc, ax_sc = plt.subplots(figsize=(4.4, 2.35), facecolor='#FFFFFF')
     ax_sc.set_facecolor('#FFFFFF')
@@ -549,8 +548,7 @@ st.markdown('<hr class="ibcs-rule">', unsafe_allow_html=True)
 col_l, col_r = st.columns([1.0, 1.28], gap="large")
 
 with col_l:
-    # 5-1. 바젤 III 적정금리 워터폴 (레퍼런스 좌측 하단 브릿지 차트 스타일)
-    st.markdown('<div class="ibcs-sec-title">바젤 III 대출금리 산출 구조 (Rate Bridge)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ibcs-sec-title">대출금리 산출 구조</div>', unsafe_allow_html=True)
     st.markdown('<div class="ibcs-sec-sub">조달원가에서 예상손실(EL)·자본비용(UL)이 누적되는 금리 분해</div>', unsafe_allow_html=True)
 
     wf_items = [
@@ -608,7 +606,6 @@ with col_l:
 
     st.markdown('<hr class="ibcs-rule" style="margin:12px 0 14px 0;">', unsafe_allow_html=True)
 
-    # 5-2. TreeSHAP 발산 막대 차트 (IBCS 레드/그린)
     st.markdown('<div class="ibcs-sec-title">재무영역별 위험 기여도 (TreeSHAP)</div>', unsafe_allow_html=True)
     st.markdown('<div class="ibcs-sec-sub">좌측 그린(-): 부도위험 방어 · 우측 레드(+): 부도위험 상승 (Log-Odds)</div>', unsafe_allow_html=True)
 
@@ -639,7 +636,6 @@ with col_l:
     plt.close(fig_sh)
 
 with col_r:
-    # 5-3. IBCS 인라인 편차 막대 표 (레퍼런스 우측 중앙 테이블 스타일)
     st.markdown('<div class="ibcs-sec-title">핵심 재무지표 벤치마크 (대상 기업 vs 정상·파산 중앙값)</div>', unsafe_allow_html=True)
     st.markdown('<div class="ibcs-sec-sub">AC: 대상 기업 수치 · Δ vs 정상 중앙값: 우측 그린(양호) / 좌측 레드(열위)</div>', unsafe_allow_html=True)
 
@@ -650,7 +646,6 @@ with col_r:
         n_med = float(normal_med[col])
         b_med = float(bankrupt_med[col])
 
-        # 진단 판정
         if direction == 'higher_better':
             is_bad = (val < (n_med + b_med) / 2.0)
             status = "위험" if val <= b_med else ("주의" if is_bad else "양호")
@@ -663,14 +658,12 @@ with col_r:
         if status in ["위험", "주의"]:
             risk_flags.append((cat_name, label, status, val, n_med, b_med, direction))
 
-        # AC 차콜 바 폭 계산
         ref_max = max(val, n_med, b_med, 1e-5)
         ac_pct = min(max((val / ref_max) * 100.0, 4.0), 100.0)
 
-        # Δ 발산 바 폭 계산 (우측 그린=양호, 좌측 레드=열위)
         span = max(abs(n_med - b_med) * 1.5, abs(n_med) * 0.25, 1e-4)
         norm_fav = max(min(fav_raw / span, 1.0), -1.0)
-        bar_px = int(abs(norm_fav) * 48)
+        bar_px = int(abs(norm_fav) * 46)
         bar_px = max(bar_px, 2) if abs(fav_raw) > 1e-6 else 0
 
         if norm_fav >= 0:
@@ -685,7 +678,7 @@ with col_r:
 
         rows_html.append(
             f'<tr>'
-            f'<td style="font-weight:600;">{label}</td>'
+            f'<td class="td-lbl">{label}</td>'
             f'<td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:{ac_pct:.0f}%;"></div></div><span class="td-num">{val:.4f}</span></div></td>'
             f'<td><div class="var-cell"><div class="var-half-l">{left_bar}</div><div class="var-axis"></div><div class="var-half-r">{right_bar}</div></div></td>'
             f'<td class="td-num" style="color:{diff_color}; font-weight:700;">{diff_val:+.4f}</td>'
@@ -710,7 +703,6 @@ with col_r:
 
     st.markdown('<hr class="ibcs-rule" style="margin:16px 0 14px 0;">', unsafe_allow_html=True)
 
-    # 5-4. 담보 조건별 금리·손실 민감도 (깔끔한 IBCS 테이블)
     st.markdown('<div class="ibcs-sec-title">담보 조건별 금리·예상손실 민감도 (Collateral Sensitivity)</div>', unsafe_allow_html=True)
     base_unsec = evaluate_credit_and_pricing(pd_curr, ead_krw, term_yrs, 0.45)
     collat_html = []
@@ -794,7 +786,7 @@ bot_l, bot_r = st.columns([1.15, 1.0], gap="large")
 
 with bot_l:
     st.markdown('<div class="ibcs-sec-title">근거 기반 자동 심사 의견 (AI Underwriting Rationale)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="ibcs-sec-sub">입력된 재무수치·SHAP·바젤 가격결정 결과에 100% 근거하여 자동 생성</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ibcs-sec-sub">입력된 재무수치·SHAP·여신 가격결정 결과에 100% 근거하여 자동 생성</div>', unsafe_allow_html=True)
     p_html = "".join([f"<p>{m}</p>" for m in memo_paras])
     st.markdown(f'<div class="memo-clean">{p_html}</div>', unsafe_allow_html=True)
 
